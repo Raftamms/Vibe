@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vibe - Social Demo</title>
+  <style>
+    :root {
+      --bg: #f4f4f6;
+      --text: #222;
+      --card: #fff;
+      --accent: #007aff;
+      --radius: 14px;
+    }
+    body {
+      margin: 0;
+      font-family: "Inter", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      background: var(--card);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      display: none; /* nascosta finché non si effettua il login */
+    }
+    .logo { font-size: 1.4em; font-weight: 700; color: var(--accent);}
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    main {
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 0 10px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .auth-card {
+      max-width: 400px;
+      margin: 100px auto;
+      background: var(--card);
+      padding: 30px;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: var(--radius);
+      margin: 8px 0;
+    }
+    #feed, #profilePage { display: none; }
+    #profilePic {
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--accent);
+      cursor: pointer;
+    }
+    #postImagePreview {
+      width: 100%;
+      max-height: 250px;
+      border-radius: var(--radius);
+      object-fit: cover;
+      margin-top: 10px;
+      display: none;
+    }
+    .post img {
+      width: 100%;
+      border-radius: var(--radius);
+      margin-top: 8px;
+    }
+    .username { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .switch { color: #555; font-size: 0.9em; }
+    .switch a { color: var(--accent); cursor: pointer; }
+  </style>
+</head>
+<body>
+  <header id="navbar">
+    <span class="logo">Vibe</span>
+    <div>
+      <button class="btn" id="toFeed">Feed</button>
+      <button class="btn" id="toProfile">Profilo</button>
+      <button class="btn" id="logout">Logout</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- LOGIN -->
+    <div id="loginPage" class="auth-card">
+      <h2>Accedi a Vibe</h2>
+      <input type="text" id="loginUser" placeholder="Username" required>
+      <input type="password" id="loginPass" placeholder="Password" required>
+      <button id="loginBtn" class="btn">Accedi</button>
+      <p class="switch">Non hai un account? <a id="toRegister">Registrati</a></p>
+    </div>
+
+    <!-- REGISTRAZIONE -->
+    <div id="registerPage" class="auth-card" style="display:none;">
+      <h2>Crea un account</h2>
+      <input type="text" id="regUser" placeholder="Scegli username" required>
+      <input type="password" id="regPass" placeholder="Crea password" required>
+      <button id="registerBtn" class="btn">Registrati</button>
+      <p class="switch">Hai già un account? <a id="toLogin">Accedi</a></p>
+    </div>
+
+    <!-- FEED -->
+    <div id="feed">
+      <div class="card">
+        <h3>Crea un post</h3>
+        <textarea id="postText" rows="3" placeholder="Scrivi qualcosa..."></textarea>
+        <input type="file" id="postImage" accept="image/*">
+        <img id="postImagePreview">
+        <button id="publishBtn" class="btn">Pubblica</button>
+      </div>
+      <div id="feedPosts"></div>
+    </div>
+
+    <!-- PROFILO -->
+    <div id="profilePage">
+      <div class="card" style="text-align:center;">
+        <img id="profilePic" src="https://via.placeholder.com/90" alt="Foto profilo">
+        <h3 id="profileName"></h3>
+        <textarea id="bio" rows="2" placeholder="Scrivi la tua bio..."></textarea>
+        <button id="saveProfile" class="btn">Salva profilo</button>
+      </div>
+      <div id="myPosts"></div>
+    </div>
+  </main>
+
+  <script>
+    // Elementi base
+    const loginPage = document.getElementById("loginPage");
+    const registerPage = document.getElementById("registerPage");
+    const navbar = document.getElementById("navbar");
+    const feed = document.getElementById("feed");
+    const profilePage = document.getElementById("profilePage");
+
+    const loginBtn = document.getElementById("loginBtn");
+    const registerBtn = document.getElementById("registerBtn");
+    const toRegister = document.getElementById("toRegister");
+    const toLogin = document.getElementById("toLogin");
+    const logoutBtn = document.getElementById("logout");
+    const toFeed = document.getElementById("toFeed");
+    const toProfile = document.getElementById("toProfile");
+
+    const postText = document.getElementById("postText");
+    const postImage = document.getElementById("postImage");
+    const postImagePreview = document.getElementById("postImagePreview");
+    const publishBtn = document.getElementById("publishBtn");
+    const feedPosts = document.getElementById("feedPosts");
+
+    const profilePic = document.getElementById("profilePic");
+    const profileName = document.getElementById("profileName");
+    const bioInput = document.getElementById("bio");
+    const saveProfile = document.getElementById("saveProfile");
+    const myPosts = document.getElementById("myPosts");
+
+    let users = JSON.parse(localStorage.getItem("users") || "{}");
+    let posts = JSON.parse(localStorage.getItem("posts") || "[]");
+    let currentUser = localStorage.getItem("currentUser") || null;
+
+    function saveData() {
+      localStorage.setItem("users", JSON.stringify(users));
+      localStorage.setItem("posts", JSON.stringify(posts));
+    }
+
+    function showPage(page) {
+      loginPage.style.display = "none";
+      registerPage.style.display = "none";
+      feed.style.display = "none";
+      profilePage.style.display = "none";
+      navbar.style.display = "none";
+
+      if (page === "login") loginPage.style.display = "block";
+      if (page === "register") registerPage.style.display = "block";
+      if (page === "feed") { feed.style.display = "block"; navbar.style.display = "flex"; renderFeed(); }
+      if (page === "profile") { profilePage.style.display = "block"; navbar.style.display = "flex"; renderProfile(); }
+    }
+
+    toRegister.onclick = () => showPage("register");
+    toLogin.onclick = () => showPage("login");
+
+    registerBtn.onclick = () => {
+      const user = document.getElementById("regUser").value.trim();
+      const pass = document.getElementById("regPass").value.trim();
+      if (!user || !pass) return alert("Compila tutti i campi");
+      if (users[user]) return alert("Questo username esiste già");
+      users[user] = { password: pass, bio: "", pic: "", posts: [] };
+      saveData();
+      alert("Registrazione completata!");
+      showPage("login");
+    };
+
+    loginBtn.onclick = () => {
+      const user = document.getElementById("loginUser").value.trim();
+      const pass = document.getElementById("loginPass").value.trim();
+      if (!users[user]) return alert("Utente non trovato");
+      if (users[user].password !== pass) return alert("Password errata");
+      currentUser = user;
+      localStorage.setItem("currentUser", user);
+      showPage("feed");
+    };
+
+    logoutBtn.onclick = () => {
+      localStorage.removeItem("currentUser");
+      showPage("login");
+    };
+
+    toFeed.onclick = () => showPage("feed");
+    toProfile.onclick = () => showPage("profile");
+
+    publishBtn.onclick = () => {
+      const text = postText.value.trim();
+      if (!text && !postImage.files[0]) return alert("Scrivi qualcosa o aggiungi un'immagine!");
+      let imageData = "";
+      if (postImage.files[0]) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          imageData = reader.result;
+          createPost(text, imageData);
+        };
+        reader.readAsDataURL(postImage.files[0]);
+      } else createPost(text, imageData);
+    };
+
+    function createPost(text, img) {
+      const newPost = {
+        user: currentUser,
+        text,
+        img,
+        userPic: users[currentUser].pic || "",
+        time: new Date().toLocaleString()
+      };
+      posts.unshift(newPost);
+      users[currentUser].posts.unshift(newPost);
+      postText.value = "";
+      postImage.value = "";
+      postImagePreview.style.display = "none";
+      saveData();
+      renderFeed();
+      renderProfile();
+    }
+
+    postImage.onchange = e => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e2 => {
+          postImagePreview.src = e2.target.result;
+          postImagePreview.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    function renderFeed() {
+      feedPosts.innerHTML = posts.map(p => `
+        <div class="card post">
+          <div class="username">
+            <img src="${p.userPic || 'https://via.placeholder.com/40'}" style="width:32px;height:32px;border-radius:50%;">
+            ${p.user}
+          </div>
+          <p>${p.text}</p>
+          ${p.img ? `<img src="${p.img}">` : ""}
+          <small>${p.time}</small>
+        </div>
+      `).join("");
+    }
+
+    function renderProfile() {
+      const u = users[currentUser];
+      profileName.textContent = currentUser;
+      bioInput.value = u.bio;
+      profilePic.src = u.pic || "https://via.placeholder.com/90";
+      myPosts.innerHTML = u.posts.map(p => `
+        <div class="card">
+          <p>${p.text}</p>
+          ${p.img ? `<img src="${p.img}">` : ""}
+        </div>
+      `).join("");
+    }
+
+    profilePic.onclick = () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          users[currentUser].pic = ev.target.result;
+          saveData();
+          renderProfile();
+          renderFeed();
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+    };
+
+    saveProfile.onclick = () => {
+      users[currentUser].bio = bioInput.value.trim();
+      saveData();
+      alert("Profilo aggiornato!");
+    };
+
+    window.onload = () => {
+      if (currentUser && users[currentUser]) showPage("feed");
+      else showPage("login");
+    };
+  </script>
+</body>
+</html>
